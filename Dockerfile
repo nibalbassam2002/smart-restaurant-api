@@ -2,6 +2,7 @@
 FROM php:8.2-fpm
 
 # 2. تثبيت المكتبات اللازمة للنظام و Nginx
+# تمت إضافة libpq-dev هنا وهي ضرورية لقواعد بيانات Postgres
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,13 +11,15 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     unzip \
+    libpq-dev \
     nginx
 
 # 3. تنظيف الكاش لتقليل حجم الصورة
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 4. تثبيت امتدادات PHP المطلوبة للارافل
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# تمت إضافة pdo_pgsql هنا لكي يستطيع PHP التحدث مع قاعدة البيانات
+RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd
 
 # 5. تثبيت Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
