@@ -14,19 +14,31 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-         if (!User::where('email', 'superadmin@example.com')->exists()) {
+        $email = 'admin@smart-restaurant.com';
+        $password = '123456789'; // الباسورد الذي تريدينه
+
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            // إنشاء جديد
             User::create([
                 'name' => 'Super Admin',
-                'email' => 'superadmin@example.com',
-                'password' => Hash::make('password'), // كلمة مرور قوية في الإنتاج
-                'phone_number' => '1234567890',
-                'date_of_birth' => '1990-01-01',
-                'role' => 'super_admin', // الدور الأهم
+                'email' => $email,
+                'password' => Hash::make($password),
+                'phone_number' => '0599999999',
+                'role' => 'super_admin',
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]);
-            $this->command->info('Super Admin created!');
+            $this->command->info("Super Admin created! Email: $email | Password: $password");
         } else {
-            $this->command->info('Super Admin already exists!');
+            // تحديث البيانات الموجودة (لضمان أن الباسورد والرول صحيحين)
+            $user->update([
+                'role' => 'super_admin',
+                'password' => Hash::make($password),
+                'is_active' => true
+            ]);
+            $this->command->info("Super Admin updated! Email: $email | Password: $password");
         }
     }
     }
