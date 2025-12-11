@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SocialAuthController;
-use App\Http\Controllers\BranchController;
+use App\Http\Controllers\BranchController; // <--- 1. أضفنا الكنترولر الجديد هنا
 
 /*
 |--------------------------------------------------------------------------
@@ -53,3 +53,13 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
 
 });
 
+/*
+|--------------------------------------------------------------------------
+| System Helper Routes (مؤقتة للصيانة)
+|--------------------------------------------------------------------------
+*/
+// هذا الراوت لتحديث الداتابيز على Render
+Route::get('/update-db', function() {
+    \Illuminate\Support\Facades\Artisan::call('migrate:refresh --seed --force');
+    return 'Database Updated With New Fields (Notes, Location Details) & Seeded!';
+});
