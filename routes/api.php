@@ -1,35 +1,55 @@
 <?php
 
-use App\Http\Controllers\AuthController; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\BranchController;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| Public Routes (متاحة للجميع)
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
-
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+/*
+|--------------------------------------------------------------------------
+| Social Auth Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('web')->group(function () {
+    Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect']);
+    Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Protected Routes (يجب أن يكون مسجل دخول)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->group(function () {
+    // أي مستخدم مسجل دخول يستطيع عمل خروج أو مشاهدة بياناته
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
 });
-// Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect']);
-// Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback']);
-Route::middleware('web')->group(function () {
-    // URL: /api/auth/{provider}/redirect
-    Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect']); 
+
+/*
+|--------------------------------------------------------------------------
+| SUPER ADMIN Routes (فقط السوبر أدمن)
+|--------------------------------------------------------------------------
+| هنا وضعنا الميدلير الجديد 'is_admin' الذي أنشأناه
+*/
+Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     
-    // URL: /api/auth/{provider}/callback
-    Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback']);
+    // 1. تهيئة صفحة إنشاء المطعم (جلب المدراء)
+    Route::get('/branches/create', [BranchController::class, 'create']);
+
+    // 2. حفظ المطعم الجديد
+    Route::post('/branches', [BranchController::class, 'store']);
+
 });
+
