@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SocialAuthController;
-use App\Http\Controllers\BranchController; // <--- 1. أضفنا الكنترولر الجديد هنا
+use App\Http\Controllers\BranchController; 
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     
     // 1. تهيئة صفحة إنشاء المطعم (جلب المدراء)
+    Route::get('/branches', [BranchController::class, 'index']); 
     Route::get('/branches/create', [BranchController::class, 'create']);
 
     // 2. حفظ المطعم الجديد

@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         
-        // 1. إعادة توجيه المستخدم غير المسجل (للأمان)
+        // 1. إعادة توجيه المستخدم غير المسجل (للأمان)ا
         $middleware->redirectGuestsTo(function (Request $request) {
             return $request->expectsJson() ? null : route('login');
         });
