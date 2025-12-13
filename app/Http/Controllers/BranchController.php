@@ -103,4 +103,57 @@ class BranchController extends Controller
             'data' => $branch
         ], 201);
     }
+    /**
+     * عرض تفاصيل فرع معين (عند الضغط على More Details)
+     */
+    public function show($id)
+    {
+        // 1. البحث عن الفرع مع بيانات المدير وعد الموظفين
+        $branch = Branch::with('manager:id,name')
+                        ->withCount('users')
+                        ->find($id);
+
+        // 2. إذا الفرع غير موجود (مثلاً كتب id خطأ)
+        if (!$branch) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Restaurant not found',
+            ], 404);
+        }
+
+        // 3. تنسيق البيانات (مهم جداً لصفحة التعديل)
+        // سنرسل العنوان كقطعة واحدة للعرض، وكقطع منفصلة للتعديل
+        $data = [
+            'id' => $branch->id,
+            'name' => $branch->name,
+            
+            // للعرض في الواجهة (Display)
+            'location_display' => "{$branch->street}, {$branch->city}, {$branch->country}",
+            
+            // للتعديل (عشان لما يضغط على القلم، الخانات تكون معبأة)
+            'country' => $branch->country,
+            'city' => $branch->city,
+            'street' => $branch->street,
+            
+            // بيانات المدير
+            'manager_id' => $branch->manager_id,
+            'manager_name' => $branch->manager ? $branch->manager->name : 'Not Selected',
+            
+            // الحالة والملاحظات
+            'status' => $branch->status,
+            'notes' => $branch->notes,
+            
+            // عدد الموظفين (للعرض بجانب أيقونة العين)
+            'employees_count' => $branch->users_count,
+            
+            // الشعار (مؤقتاً)
+            'logo' => null, 
+        ];
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Branch details fetched successfully',
+            'data' => $data
+        ]);
+    }
 }
