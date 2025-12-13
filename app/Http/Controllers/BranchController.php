@@ -156,4 +156,57 @@ class BranchController extends Controller
             'data' => $data
         ]);
     }
+    /**
+     * تحديث بيانات الفرع (لزر القلم)
+     */
+    public function update(Request $request, $id)
+    {
+        // 1. البحث عن الفرع
+        $branch = Branch::find($id);
+
+        if (!$branch) {
+            return response()->json(['status' => false, 'message' => 'Branch not found'], 404);
+        }
+
+        // 2. التحقق من البيانات (نستخدم sometimes يعني لو الحقل مبعوت افحصه، لو مش مبعوت مشيها)
+        $request->validate([
+            'name' => 'sometimes|string|max:100',
+            'country' => 'sometimes|string',
+            'city' => 'sometimes|string',
+            'street' => 'sometimes|string',
+            'manager_id' => 'sometimes|nullable|exists:users,id',
+            'status' => 'sometimes|in:active,inactive',
+            'notes' => 'sometimes|nullable|string'
+        ]);
+
+        // 3. تحديث البيانات
+        $branch->update($request->all());
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Restaurant Updated Successfully', // هذه الرسالة ستظهر مع علامة الصح الخضراء
+            'data' => $branch
+        ]);
+    }
+    /**
+     * عرض موظفي الفرع (لزر العين)
+     */
+    public function listEmployees($id)
+    {
+        // 1. نتأكد أن الفرع موجود
+        $branch = Branch::find($id);
+        if (!$branch) {
+            return response()->json(['status' => false, 'message' => 'Branch not found'], 404);
+        }
+
+        // 2. نجلب الموظفين المرتبطين بهذا الفرع
+        // (تذكرين عندما أضفنا branch_id لجدول المستخدمين؟ هنا فائدته!)
+        $employees = User::where('branch_id', $id)->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Employees fetched successfully',
+            'data' => $employees
+        ]);
+    }
 }

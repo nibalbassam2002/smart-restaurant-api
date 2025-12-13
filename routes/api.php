@@ -52,6 +52,8 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     // 2. حفظ المطعم الجديد
     Route::post('/branches', [BranchController::class, 'store']);
     Route::get('/branches/{id}', [BranchController::class, 'show']);
+    Route::put('/branches/{id}', [BranchController::class, 'update']);
+    Route::get('/branches/{id}/employees', [BranchController::class, 'listEmployees']);
 
 });
 
