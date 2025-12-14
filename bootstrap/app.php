@@ -22,12 +22,18 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         
-        // 1. إعادة توجيه المستخدم غير المسجل (للأمان)ا
+        // --- التعديل الجذري هنا ---
+        // 1. منع التحويل لصفحة Login إذا كان الرابط API
         $middleware->redirectGuestsTo(function (Request $request) {
-            return $request->expectsJson() ? null : route('login');
+            // إذا كان الطلب يتوقع JSON **أو** الرابط يبدأ بـ api
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return null; // يرجع null فيقوم لارفيل بإرجاع خطأ 401 تلقائياً
+            }
+            return route('login'); // فقط للمتصفح العادي
         });
+        // -------------------------
 
-        // 2. هنا الحل! قمنا بتفعيل الاسم المستعار (is_admin)
+        // 2. تفعيل الاسم المستعار is_admin
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
@@ -35,8 +41,10 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->renderable(function (AuthenticationException $e, Request $request) {
+            // توحيد شكل رسالة الخطأ في الـ API
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
+                    'status' => false,
                     'message' => 'Unauthenticated. Invalid or missing token.',
                 ], 401);
             }
