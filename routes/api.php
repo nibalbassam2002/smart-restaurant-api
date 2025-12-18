@@ -54,6 +54,8 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     Route::get('/branches/{id}', [BranchController::class, 'show']);
     Route::put('/branches/{id}', [BranchController::class, 'update']);
     Route::get('/branches/{id}/employees', [BranchController::class, 'listEmployees']);
+    // رابط حذف الفرع
+    Route::delete('/branches/{id}', [BranchController::class, 'destroy']);
 
 });
 

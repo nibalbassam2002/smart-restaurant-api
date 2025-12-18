@@ -209,4 +209,27 @@ class BranchController extends Controller
             'data' => $employees
         ]);
     }
+    /**
+     * حذف الفرع نهائياً
+     */
+    public function destroy($id)
+    {
+        // 1. البحث عن الفرع
+        $branch = Branch::find($id);
+
+        if (!$branch) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Restaurant not found'
+            ], 404);
+        }
+
+        // 2. الحذف
+        $branch->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Restaurant deleted successfully'
+        ]);
+    }
 }
