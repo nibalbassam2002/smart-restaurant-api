@@ -1,28 +1,42 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Traits\ApiResponseTrait;
 
 class AuthController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
-     * Handle an incoming registration request.
+     * Register New User
      */
     public function register(Request $request)
     {
         try {
+            // Custom English Messages (Friendly UX)
+            $messages = [
+                'name.required' => 'Please enter your full name.',
+                'email.required' => 'Email address is required.',
+                'email.email' => 'Please enter a valid email address.',
+                'email.unique' => 'This email is already registered. Please try logging in.',
+                'password.required' => 'Password is required.',
+                'password.min' => 'Password must be at least 8 characters long.',
+                'password.confirmed' => 'Password confirmation does not match.',
+            ];
+
             $request->validate([
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'phone_number' => ['nullable', 'string', 'max:20'], // قد تحتاجين لتعديل قواعد التحقق هذه
-                // يمكنك إضافة قواعد تحقق أكثر تفصيلاً لتاريخ الميلاد
+                'phone_number' => ['nullable', 'string', 'max:20'],
                 'date_of_birth' => ['nullable', 'date'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'], // 'confirmed' تتطلب حقل password_confirmation
-            ]);
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+            ], $messages);
 
             $user = User::create([
                 'name' => $request->name,
@@ -30,94 +44,78 @@ class AuthController extends Controller
                 'phone_number' => $request->phone_number,
                 'date_of_birth' => $request->date_of_birth,
                 'password' => Hash::make($request->password),
-                'role' => 'customer', // الدور الافتراضي عند التسجيل هو "customer"
-                'is_active' => true, // الحسابات الجديدة تكون مفعلة تلقائياً
+                'role' => 'customer',
+                'is_active' => true,
             ]);
 
-            // إنشاء توكن للمستخدم بعد التسجيل الناجح
-            // 'customer-token' هو اسم التوكن، يمكنك تسميته بأي اسم
             $token = $user->createToken('customer-token')->plainTextToken;
 
-            return response()->json([
-                'message' => 'User registered successfully',
+            // Success Message
+            return $this->successResponse([
                 'user' => $user,
                 'token' => $token,
-            ], 201); // 201 Created
+            ], 'Account created successfully! Welcome aboard.', 201);
+
         } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation Error',
-                'errors' => $e->errors(),
-            ], 422); // 422 Unprocessable Entity
+            return $this->errorResponse('Validation failed. Please check your inputs.', 422, $e->errors());
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'An error occurred during registration.',
-                'error' => $e->getMessage()
-            ], 500); // 500 Internal Server Error
+            return $this->errorResponse('An unexpected error occurred during registration.', 500, $e->getMessage());
         }
     }
 
     /**
-     * Handle an incoming authentication request.
+     * Login User
      */
     public function login(Request $request)
     {
         try {
+            $messages = [
+                'email.required' => 'Please enter your email address.',
+                'email.email' => 'Please enter a valid email address.',
+                'password.required' => 'Please enter your password.',
+            ];
+
             $request->validate([
                 'email' => ['required', 'string', 'email'],
                 'password' => ['required', 'string'],
-            ]);
+            ], $messages);
 
             $user = User::where('email', $request->email)->first();
 
+            // Check password
             if (! $user || ! Hash::check($request->password, $user->password)) {
-                throw ValidationException::withMessages([
-                    'email' => [__('auth.failed')], // رسالة خطأ قياسية من Laravel
-                ]);
+                // Clear and polite error message for user
+                return $this->errorResponse('Invalid email or password.', 401);
             }
 
-            // التحقق إذا كان الحساب غير مفعل
+            // Check if active
             if (! $user->is_active) {
-                return response()->json([
-                    'message' => 'Your account is inactive. Please contact support.'
-                ], 403); // 403 Forbidden
+                return $this->errorResponse('Your account is currently inactive. Please contact support.', 403);
             }
 
-            // حذف أي توكنات سابقة لنفس المستخدم لضمان توكن واحد نشط لكل جهاز/جلسة
-            // يمكن تعديل هذا السلوك حسب الحاجة
+            // Optional: Delete old tokens for security
             $user->tokens()->delete();
 
-            // إنشاء توكن جديد
-            // 'api-token' هو اسم التوكن، يمكنك إضافة القدرات (abilities) هنا لاحقاً للتحكم بالصلاحيات
             $token = $user->createToken('api-token')->plainTextToken;
 
-            return response()->json([
-                'message' => 'Logged in successfully',
+            return $this->successResponse([
                 'user' => $user,
                 'token' => $token,
-            ]);
+            ], 'Logged in successfully.');
+
         } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation Error',
-                'errors' => $e->errors(),
-            ], 422);
+            return $this->errorResponse('Invalid input data.', 422, $e->errors());
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'An error occurred during login.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse('An error occurred while logging in.', 500, $e->getMessage());
         }
     }
 
     /**
-     * Log the user out of the application.
+     * Logout User
      */
     public function logout(Request $request)
     {
-        // حذف التوكن الحالي الذي يستخدمه المستخدم
         $request->user()->currentAccessToken()->delete();
-
-        return response()->json([
-            'message' => 'Logged out successfully',
-        ]);
+        return $this->successResponse(null, 'Logged out successfully.');
     }
 }

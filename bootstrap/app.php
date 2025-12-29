@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Http\Request;
 use Illuminate\Auth\AuthenticationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,26 +26,25 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         
-        // --- التعديل الجذري هنا ---
         // 1. منع التحويل لصفحة Login إذا كان الرابط API
+        // (هذا يحل مشكلة Route [login] not defined)
         $middleware->redirectGuestsTo(function (Request $request) {
-            // إذا كان الطلب يتوقع JSON **أو** الرابط يبدأ بـ api
             if ($request->expectsJson() || $request->is('api/*')) {
-                return null; // يرجع null فيقوم لارفيل بإرجاع خطأ 401 تلقائياً
+                return null; // يرجع 401 تلقائياً
             }
-            return route('login'); // فقط للمتصفح العادي
+            return route('login');
         });
-        // -------------------------
 
-        // 2. تفعيل الاسم المستعار is_admin
+        // 2. تسجيل الاسم المستعار (Alias) للـ Middleware الخاص بالأدمن
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
         
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        
+        // 🛑 معالجة خطأ 401 (غير مسجل دخول - Unauthenticated)
         $exceptions->renderable(function (AuthenticationException $e, Request $request) {
-            // توحيد شكل رسالة الخطأ في الـ API
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'status' => false,
@@ -49,4 +52,51 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 401);
             }
         });
+
+        // 🛑 معالجة خطأ 403 (ليس لديك صلاحية - Forbidden)
+        // هذا يظهر مثلاً لو موظف حاول يدخل صفحة سوبر أدمن
+        $exceptions->renderable(function (AccessDeniedHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Access Denied. You do not have permission.',
+                ], 403);
+            }
+        });
+
+        // 🛑 معالجة خطأ 404 (الرابط غير موجود - Not Found)
+        // هذا يظهر لو طلبت رابط خطأ أو ID غير موجود
+        $exceptions->renderable(function (NotFoundHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The requested endpoint or resource was not found.',
+                ], 404);
+            }
+        });
+
+        // 🛑 معالجة أخطاء التحقق (Validation Error 422)
+        // عشان يرجع JSON مرتب بدل الشكل الافتراضي
+        $exceptions->renderable(function (ValidationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation Error.',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+        });
+
+        // 🛑 معالجة خطأ السيرفر العام (500 Server Error)
+        // يمسك أي خطأ في الكود ويرجع رسالة نظيفة بدل ما يعرض الكود للمستخدم
+        $exceptions->renderable(function (Throwable $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Server Error. Please try again later.',
+                    // 'error' => $e->getMessage(), // فعلي هذا السطر فقط أثناء التطوير لترين سبب الخطأ
+                ], 500);
+            }
+        });
+
     })->create();
