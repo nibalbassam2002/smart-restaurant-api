@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\BranchController; 
+use App\Http\Controllers\NewPasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +37,8 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 });
+Route::post('/forgot-password', [NewPasswordController::class, 'forgotPassword']);
+Route::post('/reset-password', [NewPasswordController::class, 'reset']);
 
 /*
 |--------------------------------------------------------------------------

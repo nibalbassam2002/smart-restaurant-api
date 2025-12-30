@@ -54,7 +54,7 @@ class AuthController extends Controller
             return $this->successResponse([
                 'user' => $user,
                 'token' => $token,
-            ], 'Account created successfully! Welcome aboard.', 201);
+            ], 'Account created successfully! Welcome to NAKHA App!', 201);
 
         } catch (ValidationException $e) {
             return $this->errorResponse('Validation failed. Please check your inputs.', 422, $e->errors());
