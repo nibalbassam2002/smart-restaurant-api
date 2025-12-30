@@ -10,7 +10,7 @@ use Illuminate\Auth\AuthenticationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Illuminate\Validation\ValidationException;
-use Throwable;
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -87,16 +87,15 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // 🛑 معالجة خطأ السيرفر العام (500 Server Error)
-        // يمسك أي خطأ في الكود ويرجع رسالة نظيفة بدل ما يعرض الكود للمستخدم
-        $exceptions->renderable(function (Throwable $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Server Error. Please try again later.',
-                    // 'error' => $e->getMessage(), // فعلي هذا السطر فقط أثناء التطوير لترين سبب الخطأ
-                ], 500);
-            }
-        });
+            // لاحظي الشرطة المائلة قبل Throwable
+    $exceptions->renderable(function (\Throwable $e, Request $request) { 
+        if ($request->is('api/*')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server Error.',
+                'error_details' => $e->getMessage(),
+            ], 500);
+        }
+    });
 
     })->create();
