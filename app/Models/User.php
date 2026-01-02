@@ -28,6 +28,8 @@ class User extends Authenticatable
         'date_of_birth',    
         'role',              
         'is_active',
+        'job_title', 
+        'department'
     ];
 
     /**

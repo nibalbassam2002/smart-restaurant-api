@@ -9,40 +9,48 @@ use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller
 {
-    /**
-     * 1. عرض موظفي فرع معين (مع بحث)
-     */
+    // 1. عرض موظفي فرع معين (للجدول داخل صفحة الفرع)
     public function index(Request $request, $branchId)
     {
         $query = User::where('branch_id', $branchId)
-                     ->where('role', '!=', 'super_admin'); // نستثني السوبر أدمن
+                     ->where('role', '!=', 'super_admin');
 
-        // إضافة ميزة البحث (Search)
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $s = $request->search;
+            $query->where(function($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%");
+            });
         }
 
-        $employees = $query->get();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Employees fetched successfully',
-            'data' => $employees
-        ]);
+        return response()->json(['status' => true, 'data' => $query->get()]);
     }
 
-    /**
-     * 2. إنشاء موظف جديد داخل الفرع
-     */
-    public function store(Request $request, $branchId)
+    // 2. (جديد) عرض كل الموظفين في النظام (لصفحة الموظفين العامة)
+    public function getAllEmployees(Request $request)
+    {
+        $query = User::where('role', '!=', 'super_admin')->with('branch:id,name');
+        
+        if ($request->has('search')) {
+            $s = $request->search;
+            $query->where('name', 'like', "%{$s}%");
+        }
+        
+        return response()->json(['status' => true, 'data' => $query->get()]);
+    }
+
+    // 3. إنشاء موظف جديد (التعديل الكبير هنا)
+    public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'phone_number' => 'nullable|string',
-            'role' => 'required|in:admin,employee', // مدير فرع أو موظف عادي
-            // يمكن إضافة 'department' هنا لو أضفناها للداتابيز لاحقاً
+            'branch_id' => 'required|exists:branches,id',
+            
+            // الحقول الجديدة حسب التصميم
+            'job_title' => 'required|string|max:100', 
+            'department' => 'required|string|max:100',
         ]);
 
         $employee = User::create([
@@ -50,8 +58,12 @@ class EmployeeController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone_number' => $request->phone_number,
-            'role' => $request->role,
-            'branch_id' => $branchId, // نربطه بالفرع القادم من الرابط
+            'branch_id' => $request->branch_id,
+            
+            'role' => 'employee', // <--- جعلناها تلقائية (موظف)
+            
+            'job_title' => $request->job_title,   // تخزين الوظيفة
+            'department' => $request->department, // تخزين القسم
             'is_active' => true,
         ]);
 
@@ -62,80 +74,48 @@ class EmployeeController extends Controller
         ], 201);
     }
 
-    /**
-     * 3. عرض تفاصيل موظف معين
-     */
+    // 4. عرض تفاصيل موظف
     public function show($id)
     {
         $employee = User::find($id);
-
-        if (!$employee) {
-            return response()->json(['status' => false, 'message' => 'Employee not found'], 404);
-        }
-
-        return response()->json([
-            'status' => true,
-            'data' => $employee
-        ]);
+        if (!$employee) return response()->json(['status' => false, 'message' => 'Not found'], 404);
+        return response()->json(['status' => true, 'data' => $employee]);
     }
 
-    /**
-     * 4. تعديل بيانات الموظف (الاسم، الحالة، الباسورد...)
-     */
+    // 5. تعديل بيانات موظف (تحديث لتشمل الوظيفة والقسم)
     public function update(Request $request, $id)
     {
         $employee = User::find($id);
-
-        if (!$employee) {
-            return response()->json(['status' => false, 'message' => 'Employee not found'], 404);
-        }
+        if (!$employee) return response()->json(['status' => false, 'message' => 'Not found'], 404);
 
         $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => ['sometimes', 'email', Rule::unique('users')->ignore($employee->id)],
+            'name' => 'sometimes|string',
+            'job_title' => 'sometimes|string',
+            'department' => 'sometimes|string',
             'phone_number' => 'nullable|string',
-            'is_active' => 'sometimes|boolean', // لتغيير الحالة (Active/Inactive)
-            'password' => 'nullable|string|min:8' // في حال أراد تغيير الباسورد
+            'is_active' => 'sometimes|boolean'
         ]);
 
-        // تحديث البيانات
-        $data = $request->except('password'); // نأخذ كل شيء ما عدا الباسورد
-
-        // نعالج الباسورد لوحده إذا تم إرساله
-        if ($request->has('password') && !empty($request->password)) {
-            $data['password'] = Hash::make($request->password);
-        }
-
-        $employee->update($data);
+        $employee->update($request->except(['password', 'email'])); 
 
         return response()->json([
             'status' => true,
-            'message' => 'Employee updated successfully',
+            'message' => 'Updated successfully',
             'data' => $employee
         ]);
     }
 
-    /**
-     * 5. حذف موظف نهائياً
-     */
+    // 6. حذف موظف
     public function destroy($id)
     {
         $employee = User::find($id);
-
-        if (!$employee) {
-            return response()->json(['status' => false, 'message' => 'Employee not found'], 404);
-        }
-
-        // لا نسمح بحذف السوبر أدمن بالخطأ
+        if (!$employee) return response()->json(['status' => false, 'message' => 'Not found'], 404);
+        
         if ($employee->role === 'super_admin') {
             return response()->json(['status' => false, 'message' => 'Cannot delete Super Admin'], 403);
         }
 
         $employee->delete();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Employee deleted successfully'
-        ]);
+        return response()->json(['status' => true, 'message' => 'Deleted successfully']);
     }
 }

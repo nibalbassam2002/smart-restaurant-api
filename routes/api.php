@@ -6,14 +6,17 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\BranchController; 
 use App\Http\Controllers\NewPasswordController;
+use App\Http\Controllers\EmployeeController; // <--- 1. أضفنا هذا الكنترولر
 
 /*
 |--------------------------------------------------------------------------
-| Public Routes (متاحة للجميع)
+| Public Routes
 |--------------------------------------------------------------------------
 */
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [NewPasswordController::class, 'forgotPassword']);
+Route::post('/reset-password', [NewPasswordController::class, 'reset']);
 
 /*
 |--------------------------------------------------------------------------
@@ -27,48 +30,52 @@ Route::middleware('web')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Protected Routes (يجب أن يكون مسجل دخول)
+| Protected Routes
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
-    // أي مستخدم مسجل دخول يستطيع عمل خروج أو مشاهدة بياناته
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
 });
-Route::post('/forgot-password', [NewPasswordController::class, 'forgotPassword']);
-Route::post('/reset-password', [NewPasswordController::class, 'reset']);
 
 /*
 |--------------------------------------------------------------------------
-| SUPER ADMIN Routes (فقط السوبر أدمن)
+| SUPER ADMIN Routes
 |--------------------------------------------------------------------------
-| هنا وضعنا الميدلير الجديد 'is_admin' الذي أنشأناه
 */
 Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     
-    // 1. تهيئة صفحة إنشاء المطعم (جلب المدراء)
+    // --- إدارة الفروع (Branches) ---
     Route::get('/branches', [BranchController::class, 'index']); 
     Route::get('/branches/create', [BranchController::class, 'create']);
-
-    // 2. حفظ المطعم الجديد
     Route::post('/branches', [BranchController::class, 'store']);
     Route::get('/branches/{id}', [BranchController::class, 'show']);
     Route::put('/branches/{id}', [BranchController::class, 'update']);
-    Route::get('/branches/{id}/employees', [BranchController::class, 'listEmployees']);
-    // رابط حذف الفرع
     Route::delete('/branches/{id}', [BranchController::class, 'destroy']);
+
+    // --- إدارة الموظفين (Employees) - القسم الجديد ---
+    // 1. عرض كل موظفي النظام
+    Route::get('/employees', [EmployeeController::class, 'getAllEmployees']);
+    
+    // 2. عرض موظفي فرع معين (بدل listEmployees القديمة)
+    Route::get('/branches/{branchId}/employees', [EmployeeController::class, 'index']);
+    
+    // 3. إنشاء، عرض، تعديل، حذف موظف
+    Route::post('/employees', [EmployeeController::class, 'store']);
+    Route::get('/employees/{id}', [EmployeeController::class, 'show']);
+    Route::put('/employees/{id}', [EmployeeController::class, 'update']);
+    Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
 
 });
 
 /*
 |--------------------------------------------------------------------------
-| System Helper Routes (مؤقتة للصيانة)
+| System Helper Routes
 |--------------------------------------------------------------------------
 */
-// هذا الراوت لتحديث الداتابيز على Render
 Route::get('/update-db', function() {
     \Illuminate\Support\Facades\Artisan::call('migrate:refresh --seed --force');
-    return 'Database Updated With New Fields (Notes, Location Details) & Seeded!';
+    return 'Database Updated With New Fields (Notes, Location Details, Job Title) & Seeded!';
 });
