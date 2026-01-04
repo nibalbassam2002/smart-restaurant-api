@@ -26,7 +26,7 @@ class BranchController extends Controller
                 'admin_status' => $branch->manager ? $branch->manager->name : 'Not Selected',
                 'is_admin_selected' => !is_null($branch->manager_id),
                 'employees_count' => $branch->users_count,
-                'logo' => null
+                'logo' => $branch->logo ? asset('storage/' . $branch->logo) : null,
             ];
         });
         return response()->json(['status' => true, 'data' => $data]);
@@ -39,7 +39,7 @@ class BranchController extends Controller
         return response()->json(['status' => true, 'data' => ['potential_admins' => $potentialAdmins]]);
     }
 
-    // إنشاء فرع (تم التعديل لتوليد الكود)
+    // الإنشاء (مع الصورة)
     public function store(Request $request)
     {
         $request->validate([
@@ -49,15 +49,22 @@ class BranchController extends Controller
             'street' => 'required|string',
             'manager_id' => 'nullable|exists:users,id',
             'status' => 'required|in:active,inactive',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // توليد كود عشوائي للفرع (مثل 011188234)
-        $code = mt_rand(100000000, 999999999);
+        // معالجة رفع الصورة
+        $logoPath = null;
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('branches', 'public');
+        }
+
+        $code = 'BR-' . mt_rand(100000, 999999);
 
         $branch = Branch::create([
-            'branch_code' => $code, // <--- التعديل الجديد
+            'branch_code' => $code,
             'name' => $request->name,
+            'logo' => $logoPath,
             'country' => $request->country,
             'city' => $request->city,
             'street' => $request->street,
@@ -69,7 +76,7 @@ class BranchController extends Controller
         return response()->json(['status' => true, 'message' => 'Restaurant created', 'data' => $branch], 201);
     }
 
-    // (تم التعديل لعرض التاريخ والكود)
+    // التفاصيل
     public function show($id)
     {
         $branch = Branch::with('manager:id,name')->withCount('users')->find($id);
@@ -80,6 +87,10 @@ class BranchController extends Controller
             'name' => $branch->name,
             'branch_code' => $branch->branch_code ?? 'N/A', 
             'created_date' => $branch->created_at->format('d/m/Y'), 
+            
+            // --- الإضافة المهمة هنا (الصورة) ---
+            'logo' => $branch->logo ? asset('storage/' . $branch->logo) : null,
+            // ----------------------------------
 
             'location_display' => "{$branch->street}, {$branch->city}, {$branch->country}",
             'country' => $branch->country,
@@ -98,7 +109,28 @@ class BranchController extends Controller
     {
         $branch = Branch::find($id);
         if (!$branch) return response()->json(['status' => false, 'message' => 'Not found'], 404);
-        $branch->update($request->all());
+
+        // هنا أضفت لكِ باقي التحقق لكي يعمل التعديل بشكل صحيح
+        $request->validate([
+            'name' => 'sometimes|string|max:100',
+            'country' => 'sometimes|string',
+            'city' => 'sometimes|string',
+            'street' => 'sometimes|string',
+            'manager_id' => 'sometimes|nullable|exists:users,id',
+            'status' => 'sometimes|in:active,inactive',
+            'notes' => 'sometimes|nullable|string',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        $data = $request->all();
+
+        // تحديث الصورة إذا تم رفع صورة جديدة
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo')->store('branches', 'public');
+        }
+
+        $branch->update($data);
+
         return response()->json(['status' => true, 'message' => 'Updated Successfully', 'data' => $branch]);
     }
 
