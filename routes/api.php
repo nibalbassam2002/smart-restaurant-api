@@ -75,15 +75,12 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/update-db', function() {
-    // 1. مسح الجداول وإعادة بنائها
-    \Illuminate\Support\Facades\Artisan::call('migrate:refresh --force');
+    // استخدمنا fresh بدلاً من refresh
+    // fresh: يحذف الجداول فوراً دون النظر لدالة down
+    \Illuminate\Support\Facades\Artisan::call('migrate:fresh --seed --force');
     
-    // 2. إنشاء السوبر أدمن
-    \Illuminate\Support\Facades\Artisan::call('db:seed --class=SuperAdminSeeder --force');
-    
-    // 3. إنشاء بيانات حضور وهمية (عشان تشوفي الجدول مليان)
-    // ملاحظة: تأكدي أنك أنشأتِ ملف AttendanceSeeder كما شرحت سابقاً
+    // إعادة تشغيل السيدر الإضافي للحضور
     \Illuminate\Support\Facades\Artisan::call('db:seed --class=AttendanceSeeder --force');
-    
-    return 'Database Reset & Seeded with (Admin + Employees + Attendance Data)!';
+
+    return 'Database Wiped & Re-Created Successfully with Full Details!';
 });

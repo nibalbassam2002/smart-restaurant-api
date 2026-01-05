@@ -56,7 +56,16 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['job_title', 'department', 'photo', 'address', 'salary', 'date_of_hire', 'branch_id']);
+            if (Schema::hasColumn('users', 'job_title')) $table->dropColumn('job_title');
+            if (Schema::hasColumn('users', 'department')) $table->dropColumn('department');
+            if (Schema::hasColumn('users', 'photo')) $table->dropColumn('photo');
+            if (Schema::hasColumn('users', 'address')) $table->dropColumn('address');
+            if (Schema::hasColumn('users', 'salary')) $table->dropColumn('salary');
+            if (Schema::hasColumn('users', 'date_of_hire')) $table->dropColumn('date_of_hire');
+            if (Schema::hasColumn('users', 'branch_id')) {
+                $table->dropForeign(['branch_id']);
+                $table->dropColumn('branch_id');
+            }
         });
     }
 };
