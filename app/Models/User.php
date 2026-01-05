@@ -8,8 +8,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-
-
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -28,8 +26,13 @@ class User extends Authenticatable
         'date_of_birth',    
         'role',              
         'is_active',
+        'branch_id',   // لربط الموظف بالفرع
         'job_title', 
-        'department'
+        'department',
+        'photo',       // الصورة
+        'address',     // العنوان
+        'salary',      // الراتب
+        'date_of_hire' // تاريخ التعيين
     ];
 
     /**
@@ -53,5 +56,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // علاقة الموظف بالفرع (عشان نجيب اسم المطعم في صفحة التفاصيل)
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

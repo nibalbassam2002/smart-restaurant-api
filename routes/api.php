@@ -6,7 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\BranchController; 
 use App\Http\Controllers\NewPasswordController;
-use App\Http\Controllers\EmployeeController; // <--- 1. أضفنا هذا الكنترولر
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\AttendanceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,27 +56,34 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     Route::put('/branches/{id}', [BranchController::class, 'update']);
     Route::delete('/branches/{id}', [BranchController::class, 'destroy']);
 
-    // --- إدارة الموظفين (Employees) - القسم الجديد ---
-    // 1. عرض كل موظفي النظام
+    // --- إدارة الموظفين (Employees) ---
     Route::get('/employees', [EmployeeController::class, 'getAllEmployees']);
-    
-    // 2. عرض موظفي فرع معين (بدل listEmployees القديمة)
     Route::get('/branches/{branchId}/employees', [EmployeeController::class, 'index']);
-    
-    // 3. إنشاء، عرض، تعديل، حذف موظف
     Route::post('/employees', [EmployeeController::class, 'store']);
     Route::get('/employees/{id}', [EmployeeController::class, 'show']);
     Route::put('/employees/{id}', [EmployeeController::class, 'update']);
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
+    
+    // --- الحضور والغياب (مشاهدة فقط) ---
+    Route::get('/employees/{id}/attendance', [AttendanceController::class, 'getEmployeeAttendance']);
 
 });
 
 /*
 |--------------------------------------------------------------------------
-| System Helper Routes
+| System Helper Routes (زر التحديث السحري)
 |--------------------------------------------------------------------------
 */
 Route::get('/update-db', function() {
-    \Illuminate\Support\Facades\Artisan::call('migrate:refresh --seed --force');
-    return 'Database Updated With New Fields (Notes, Location Details, Job Title) & Seeded!';
+    // 1. مسح الجداول وإعادة بنائها
+    \Illuminate\Support\Facades\Artisan::call('migrate:refresh --force');
+    
+    // 2. إنشاء السوبر أدمن
+    \Illuminate\Support\Facades\Artisan::call('db:seed --class=SuperAdminSeeder --force');
+    
+    // 3. إنشاء بيانات حضور وهمية (عشان تشوفي الجدول مليان)
+    // ملاحظة: تأكدي أنك أنشأتِ ملف AttendanceSeeder كما شرحت سابقاً
+    \Illuminate\Support\Facades\Artisan::call('db:seed --class=AttendanceSeeder --force');
+    
+    return 'Database Reset & Seeded with (Admin + Employees + Attendance Data)!';
 });
