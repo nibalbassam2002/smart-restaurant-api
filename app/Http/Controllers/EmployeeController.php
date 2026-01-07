@@ -32,16 +32,43 @@ class EmployeeController extends Controller
     }
 
     // 2. عرض كل الموظفين في النظام
-    public function getAllEmployees(Request $request)
+   public function getAllEmployees(Request $request)
     {
+        // 1. استثناء السوبر أدمن
         $query = User::where('role', '!=', 'super_admin')->with('branch:id,name');
         
-        if ($request->has('search')) {
+        // 2. البحث (Search)
+        if ($request->has('search') && !empty($request->search)) {
             $s = $request->search;
-            $query->where('name', 'like', "%{$s}%");
+            $query->where(function($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                  ->orWhere('email', 'like', "%{$s}%")
+                  ->orWhere('phone_number', 'like', "%{$s}%");
+            });
         }
+
+        // 3. فلتر المدراء فقط (Active Admins Link)
+        if ($request->has('role') && $request->role == 'admin') {
+            $query->where('job_title', 'Manager'); // أو حسب ما تسمين المدير
+        }
+
+        $employees = $query->get();
+
+        // 4. تنسيق البيانات لتطابق الجدول في الصورة
+        $data = $employees->map(function($employee) {
+            return [
+                'id' => $employee->id,
+                'name' => $employee->name, // Admin Name
+                'restaurant' => $employee->branch ? $employee->branch->name : 'N/A', // Restaurant Name
+                'phone' => $employee->phone_number,
+                'email' => $employee->email,
+                'department' => $employee->department, // Department (United States?? في الصورة مكتوب دولة، غريب!)
+                'status' => $employee->is_active ? 'Active' : 'Inactive',
+                'photo' => $employee->photo ? asset('storage/' . $employee->photo) : null,
+            ];
+        });
         
-        return response()->json(['status' => true, 'data' => $query->get()]);
+        return response()->json(['status' => true, 'data' => $data]);
     }
 
     // 3. إنشاء موظف جديد (التعديل الشامل)
