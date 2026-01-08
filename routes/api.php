@@ -8,6 +8,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\NewPasswordController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -66,6 +67,11 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     
     // --- الحضور والغياب (مشاهدة فقط) ---
     Route::get('/employees/{id}/attendance', [AttendanceController::class, 'getEmployeeAttendance']);
+    Route::get('/admins', [AdminController::class, 'index']); // القائمة
+    Route::post('/admins', [AdminController::class, 'store']); // إنشاء
+    Route::get('/admins/{id}', [AdminController::class, 'show']); // تفاصيل
+    Route::put('/admins/{id}', [AdminController::class, 'update']); // تعديل
+    Route::delete('/admins/{id}', [AdminController::class, 'destroy']); // حذف
 
 });
 

@@ -32,7 +32,8 @@ class User extends Authenticatable
         'photo',       // الصورة
         'address',     // العنوان
         'salary',      // الراتب
-        'date_of_hire' // تاريخ التعيين
+        'date_of_hire', // تاريخ التعيين
+        'permissions',
     ];
 
     /**
@@ -55,6 +56,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'permissions' => 'array',
         ];
     }
 
@@ -63,4 +65,27 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Branch::class);
     }
+    // قائمة الصلاحيات المتاحة في النظام
+    const AVAILABLE_PERMISSIONS = [
+        // إدارة الموظفين
+        'view_employees', 'create_employees', 'edit_employees', 'delete_employees', 'manage_roles',
+        
+        // إدارة الطلبات والمبيعات
+        'view_orders', 'update_order_status', 'cancel_order', 'manage_tables', 'view_sales_reports',
+        
+        // إدارة المخزون
+        'view_inventory', 'update_stock', 'add_product', 'mark_sold_out', 'request_restock',
+        
+        // إدارة الفروع
+        'view_branch_details', 'update_working_hours', 'update_location', 'update_branch_settings',
+        
+        // صلاحيات مالية
+        'view_financial_reports', 'request_funds', 'manage_discounts',
+        
+        // صلاحيات إدارية
+        'send_reports', 'manage_staff_permissions',
+        
+        // صلاحيات النظام والإضافية
+        'access_dashboard', 'manage_notifications', 'manage_customers', 'manage_loyalty', 'manage_delivery', 'manage_reviews'
+    ];
 }
