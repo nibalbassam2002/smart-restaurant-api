@@ -88,4 +88,11 @@ class User extends Authenticatable
         // صلاحيات النظام والإضافية
         'access_dashboard', 'manage_notifications', 'manage_customers', 'manage_loyalty', 'manage_delivery', 'manage_reviews'
     ];
+        public function workSchedules() {
+            
+        return $this->hasMany(WorkSchedule::class);
+    }
+    public function attendances() {
+        return $this->hasMany(Attendance::class);
+    }
 }

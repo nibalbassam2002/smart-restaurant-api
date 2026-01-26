@@ -76,27 +76,69 @@ class EmployeeController extends Controller
         return response()->json(['status' => true, 'message' => 'Employee created in your branch', 'data' => $employee], 201);
     }
 
-    // 3. عرض تفاصيل موظف (Show - زر العين)
-    // ⚠️ الحماية: يجب أن يكون الموظف تابعاً لنفس فرع المدير
+     // عرض تفاصيل موظف (الصفحة الكاملة)
     public function show(Request $request, $id)
     {
         $myBranchId = $request->user()->branch_id;
 
+        // 1. جلب الموظف مع علاقاته (الفرع، جدول الدوام، سجل الحضور)
         $employee = User::where('id', $id)
-                        ->where('branch_id', $myBranchId) // شرط الأمان
+                        ->where('branch_id', $myBranchId) // أمان: لازم يكون من نفس الفرع
+                        ->with([
+                            'branch', 
+                            'workSchedules', // جدول الدوام
+                            'attendances' => function($q) {
+                                $q->orderBy('date', 'desc')->take(10); // نجيب آخر 10 أيام حضور فقط للعرض السريع
+                            }
+                        ])
                         ->first();
 
         if (!$employee) {
             return response()->json(['status' => false, 'message' => 'Employee not found or access denied'], 404);
         }
 
-        // تجهيز البيانات
-        $data = $employee->toArray();
-        $data['photo_url'] = $employee->photo ? asset('storage/' . $employee->photo) : null;
-        $data['restaurant'] = $employee->branch ? $employee->branch->name : 'N/A';
+        // 2. تنسيق البيانات لتطابق التصميم
+        $data = [
+            // --- البيانات الشخصية ---
+            'id' => $employee->id,
+            'photo' => $employee->photo ? asset('storage/' . $employee->photo) : null,
+            'name' => $employee->name,
+            'phone' => $employee->phone_number,
+            'email' => $employee->email,
+            'address' => $employee->address ?? 'N/A',
+            'restaurant' => $employee->branch ? $employee->branch->name : 'N/A',
+            'date_of_hire' => $employee->date_of_hire ? \Carbon\Carbon::parse($employee->date_of_hire)->format('d/m/Y') : 'N/A',
+            'department' => $employee->department,
+            'job_title' => $employee->job_title,
+            'status' => $employee->is_active ? 'Active' : 'Inactive',
+            
+            // --- البيانات المالية والحضور ---
+            'count_hours_attendance' => $employee->attendances->sum('working_hours'), // مجموع الساعات
+            'salary' => $employee->salary ? $employee->salary . '$ For Hour' : 'N/A',
+
+            // --- جدول الدوام (Work Schedule) ---
+            // إذا كان فارغاً، نرسل رسالة أو مصفوفة فارغة
+            'work_schedule' => $employee->workSchedules->map(function($schedule) {
+                return [
+                    'day' => $schedule->day,
+                    'time' => $schedule->is_off ? '-' : $schedule->work_time
+                ];
+            }),
+
+            // --- سجل الحضور (Attendance Sheet) ---
+            'attendance_sheet' => $employee->attendances->map(function($record) {
+                return [
+                    'date' => $record->date,
+                    'day' => date('l', strtotime($record->date)),
+                    'check_in' => $record->check_in ?? '-',
+                    'check_out' => $record->check_out ?? '-',
+                    'status' => $record->status
+                ];
+            })
+        ];
 
         return response()->json(['status' => true, 'data' => $data]);
-    }
+    }   
 
     // 4. تعديل بيانات موظف (Update - زر القلم)
     public function update(Request $request, $id)
