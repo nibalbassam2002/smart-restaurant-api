@@ -9,6 +9,7 @@ use App\Http\Controllers\NewPasswordController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\EmployeeController as AdminEmployeeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -74,12 +75,18 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     Route::delete('/admins/{id}', [AdminController::class, 'destroy']); // حذف
 
 });
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    
+    Route::get('/employees', [AdminEmployeeController::class, 'index']);
+    Route::post('/employees', [AdminEmployeeController::class, 'store']);
+    Route::get('/employees/{id}', [AdminEmployeeController::class, 'show']);
+    Route::put('/employees/{id}', [AdminEmployeeController::class, 'update']);
+    Route::delete('/employees/{id}', [AdminEmployeeController::class, 'destroy']);
+    
+    
+});
 
-/*
-|--------------------------------------------------------------------------
-| System Helper Routes (زر التحديث السحري)
-|--------------------------------------------------------------------------
-*/
+
 Route::get('/update-db', function() {
     // استخدمنا fresh بدلاً من refresh
     // fresh: يحذف الجداول فوراً دون النظر لدالة down
